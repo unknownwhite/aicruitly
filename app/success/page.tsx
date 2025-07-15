@@ -2,8 +2,11 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Brain, CheckCircle, Mail, Calendar, Gift, ArrowRight, Twitter, Linkedin, Share2 } from "lucide-react"
+import { getWaitlistStats } from "../actions/waitlist"
 
-export default function SuccessPage() {
+export default async function SuccessPage() {
+  const stats = await getWaitlistStats()
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
       {/* Navigation */}
@@ -40,8 +43,13 @@ export default function SuccessPage() {
             </span>
           </h1>
 
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-12 font-light">
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-4 font-light">
             🎉 You're officially on our waitlist! Check your email for a confirmation and exclusive updates.
+          </p>
+
+          <p className="text-lg text-gray-500 mb-12">
+            You're #{stats.count} on our waitlist - join {stats.count > 1 ? `${stats.count - 1} other` : "the"}{" "}
+            professionals already waiting!
           </p>
 
           {/* What's Next Cards */}
@@ -96,7 +104,7 @@ export default function SuccessPage() {
                   <div className="text-left">
                     <h3 className="font-semibold text-gray-900">Welcome Email (Now)</h3>
                     <p className="text-gray-600 text-sm">
-                      Check your inbox for your welcome email with exclusive content.
+                      Check your inbox for your welcome email with exclusive content and next steps.
                     </p>
                   </div>
                 </div>
@@ -108,7 +116,7 @@ export default function SuccessPage() {
                   <div className="text-left">
                     <h3 className="font-semibold text-gray-900">Product Updates (Monthly)</h3>
                     <p className="text-gray-600 text-sm">
-                      Get behind-the-scenes updates and hiring tips from our team.
+                      Get behind-the-scenes updates, hiring tips, and exclusive previews from our team.
                     </p>
                   </div>
                 </div>
@@ -120,7 +128,7 @@ export default function SuccessPage() {
                   <div className="text-left">
                     <h3 className="font-semibold text-gray-900">Beta Access (Q2 2024)</h3>
                     <p className="text-gray-600 text-sm">
-                      Be the first to try Aicruitly with your exclusive early access.
+                      Be the first to try Aicruitly with your exclusive early access and special pricing.
                     </p>
                   </div>
                 </div>

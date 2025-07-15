@@ -514,16 +514,16 @@ export default function LandingPage() {
             </div>
 
             <div className="flex space-x-8 text-gray-400 text-sm">
-              <a href="#" className="hover:text-white transition-colors">
+              <a href="/privacy" className="hover:text-white transition-colors">
                 Privacy Policy
               </a>
-              <a href="#" className="hover:text-white transition-colors">
+              <a href="/terms" className="hover:text-white transition-colors">
                 Terms of Service
               </a>
-              <a href="#" className="hover:text-white transition-colors">
+              <a href="/contact" className="hover:text-white transition-colors">
                 Contact
               </a>
-              <a href="#" className="hover:text-white transition-colors">
+              <a href="/blog" className="hover:text-white transition-colors">
                 Blog
               </a>
             </div>

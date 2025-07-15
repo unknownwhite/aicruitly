@@ -1,6 +1,8 @@
 "use server"
 
 import { redirect } from "next/navigation"
+import { createServerClient } from "../../lib/supabase"
+import { sendWelcomeEmail, sendInternalNotification } from "../../lib/email"
 
 export interface WaitlistFormData {
   firstName: string
@@ -33,95 +35,120 @@ export async function joinWaitlist(formData: FormData) {
     throw new Error("Please fill in all required fields")
   }
 
-  // Simulate email validation
+  // Validate email format
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   if (!emailRegex.test(data.email)) {
     throw new Error("Please enter a valid email address")
   }
 
-  // Simulate saving to database
-  console.log("Saving waitlist signup:", data)
+  try {
+    // Create Supabase client
+    const supabase = createServerClient()
 
-  // Simulate sending welcome email
-  await sendWelcomeEmail(data)
+    // Check if email already exists
+    const { data: existingUser, error: checkError } = await supabase
+      .from("waitlist")
+      .select("email")
+      .eq("email", data.email)
+      .single()
 
-  // Simulate sending internal notification
-  await sendInternalNotification(data)
+    if (existingUser) {
+      throw new Error("This email is already on our waitlist. Check your inbox for your welcome email!")
+    }
 
-  // Redirect to success page
-  redirect("/success")
-}
+    // Insert new waitlist signup
+    const { data: insertedData, error: insertError } = await supabase
+      .from("waitlist")
+      .insert({
+        first_name: data.firstName,
+        last_name: data.lastName,
+        email: data.email,
+        company: data.company,
+        job_title: data.jobTitle || null,
+        team_size: data.teamSize || null,
+        current_tool: data.currentTool || null,
+        pain_points: data.painPoints.length > 0 ? data.painPoints : null,
+        interests: data.interests.length > 0 ? data.interests : null,
+      })
+      .select()
+      .single()
 
-async function sendWelcomeEmail(data: WaitlistFormData) {
-  // Simulate email sending delay
-  await new Promise((resolve) => setTimeout(resolve, 1000))
+    if (insertError) {
+      console.error("Supabase insert error:", insertError)
+      throw new Error("Failed to save your information. Please try again.")
+    }
 
-  console.log(`Sending welcome email to ${data.email}`)
+    console.log("Successfully saved to database:", insertedData)
 
-  // In a real application, you would use a service like:
-  // - Resend
-  // - SendGrid
-  // - AWS SES
-  // - Nodemailer
+    // Send welcome email
+    try {
+      await sendWelcomeEmail(data)
+      console.log("Welcome email sent successfully")
+    } catch (emailError) {
+      console.error("Failed to send welcome email:", emailError)
+      // Don't throw error here - user is still signed up
+    }
 
-  const emailContent = {
-    to: data.email,
-    subject: "Welcome to Aicruitly Waitlist! 🚀",
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: linear-gradient(135deg, #3B82F6, #8B5CF6); padding: 40px 20px; text-align: center;">
-          <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to Aicruitly!</h1>
-        </div>
-        
-        <div style="padding: 40px 20px; background: #f8f9fa;">
-          <h2 style="color: #1f2937;">Hi ${data.firstName}! 👋</h2>
-          
-          <p style="color: #4b5563; line-height: 1.6;">
-            Thank you for joining the Aicruitly waitlist! We're thrilled to have you on board as we prepare to revolutionize the hiring process with AI.
-          </p>
-          
-          <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="color: #1f2937; margin-top: 0;">What's Next?</h3>
-            <ul style="color: #4b5563; line-height: 1.8;">
-              <li>🎯 You're now on our exclusive early access list</li>
-              <li>💰 You'll get 50% off for the first 6 months</li>
-              <li>📧 We'll notify you as soon as beta access is available</li>
-              <li>🚀 Expected launch: Q2 2024</li>
-            </ul>
-          </div>
-          
-          <p style="color: #4b5563; line-height: 1.6;">
-            In the meantime, follow us on social media for updates and hiring tips!
-          </p>
-          
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="https://aicruitly.com" style="background: linear-gradient(135deg, #3B82F6, #8B5CF6); color: white; padding: 12px 24px; text-decoration: none; border-radius: 25px; font-weight: bold;">
-              Visit Our Website
-            </a>
-          </div>
-        </div>
-        
-        <div style="padding: 20px; text-align: center; color: #6b7280; font-size: 14px;">
-          <p>© 2024 Aicruitly. All rights reserved.</p>
-          <p>You're receiving this because you signed up for our waitlist.</p>
-        </div>
-      </div>
-    `,
+    // Send internal notification
+    try {
+      await sendInternalNotification(data)
+      console.log("Internal notification sent successfully")
+    } catch (notificationError) {
+      console.error("Failed to send internal notification:", notificationError)
+      // Don't throw error here - user is still signed up
+    }
+
+    // Redirect to success page
+    redirect("/success")
+  } catch (error) {
+    console.error("Waitlist signup error:", error)
+
+    if (error instanceof Error) {
+      throw error
+    }
+
+    throw new Error("Something went wrong. Please try again.")
   }
-
-  console.log("Email sent successfully:", emailContent)
 }
 
-async function sendInternalNotification(data: WaitlistFormData) {
-  // Simulate internal notification
-  await new Promise((resolve) => setTimeout(resolve, 500))
+// Function to get waitlist stats (for admin use)
+export async function getWaitlistStats() {
+  try {
+    const supabase = createServerClient()
 
-  console.log("Internal notification sent:", {
-    type: "new_waitlist_signup",
-    user: `${data.firstName} ${data.lastName}`,
-    email: data.email,
-    company: data.company,
-    teamSize: data.teamSize,
-    timestamp: new Date().toISOString(),
-  })
+    const { count, error } = await supabase.from("waitlist").select("*", { count: "exact", head: true })
+
+    if (error) {
+      console.error("Error fetching waitlist stats:", error)
+      return { count: 0 }
+    }
+
+    return { count: count || 0 }
+  } catch (error) {
+    console.error("Error in getWaitlistStats:", error)
+    return { count: 0 }
+  }
+}
+
+// Function to get recent signups (for admin use)
+export async function getRecentSignups(limit = 10) {
+  try {
+    const supabase = createServerClient()
+
+    const { data, error } = await supabase
+      .from("waitlist")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(limit)
+
+    if (error) {
+      console.error("Error fetching recent signups:", error)
+      return []
+    }
+
+    return data || []
+  } catch (error) {
+    console.error("Error in getRecentSignups:", error)
+    return []
+  }
 }
